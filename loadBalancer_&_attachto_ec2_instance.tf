@@ -29,6 +29,15 @@ resource "aws_instance" "my_ec2"  {
   tags = {
     Name = "loadBalancer_instance"
   }
+  user_data = <<-EOF
+  #!/bin/bash
+  yum update -y
+  yum install nginx -y
+  service nginx start
+  systemctl enable nginx.service
+  touch /usr/share/nginx/html/index.html
+  echo "Hello from terraform" > /usr/share/nginx/html/index.html
+  EOF
 
 }
 
