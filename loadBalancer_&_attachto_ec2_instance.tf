@@ -5,7 +5,7 @@
 # 3) Create a Target Group and configure the health check.
 # 4) Attach the Target Group to the EC2 instance.
 # 5) Create a Listener for the Load Balancer.
-
+#for  Auto scaling https://stackoverflow.com/questions/69279369/launching-aws-elb-instace-using-terraform
 
 terraform {
   required_version = "~> 1.1"
@@ -24,10 +24,11 @@ provider "aws" {
 resource "aws_instance" "my_ec2"  {
   ami           = "ami-0d682f26195e9ec0f"
   instance_type = "t2.micro"
-  vpc_security_group_ids = ["sg-0f8e06a916abb2b98"]
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
   key_name = "mumbaiserverkey"
+  count = 2
   tags = {
-    Name = "loadBalancer_instance"
+    Name = "loadBalancer_instance${count.index + 1}"
   }
   user_data = <<-EOF
   #!/bin/bash
@@ -40,6 +41,40 @@ resource "aws_instance" "my_ec2"  {
   EOF
 
 }
+
+
+resource "aws_security_group" "ec2_sg" {
+  name        = "load_balancer_ec2_sg"
+  description = "Allow TLS inbound traffic and all outbound traffic"
+  vpc_id      = "vpc-02c99395c4b6dcdc3"
+
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  ingress {
+    from_port        = 80
+    to_port          = 80
+    protocol         = "TCP"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+  ingress {
+    description = "Allow SSH from anywhere"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] # Open to all (Not recommended for production)
+  }
+
+}
+
+
 
 #create a loadbalancer
 resource "aws_lb" "test" {
@@ -72,8 +107,9 @@ resource "aws_lb_target_group" "ec2_tg" {
 
 #attach to ec2 instance
 resource "aws_lb_target_group_attachment" "my_ec2" {
+  count            = length(aws_instance.my_ec2)
   target_group_arn = aws_lb_target_group.ec2_tg.arn
-  target_id        = aws_instance.my_ec2.id
+  target_id        = aws_instance.my_ec2[count.index].id
   port             = 80
 
 
@@ -121,4 +157,12 @@ resource "aws_security_group" "lb_sg" {
 
 output "lb_dns_name" {
   value = aws_lb.test.dns_name
+}
+
+
+output "ec2_instance_details" {
+  description = "Public IPs and Instance IDs of created EC2 instances"
+  value = {
+    for instance in aws_instance.my_ec2 : instance.id => instance.public_ip
+  }
 }
