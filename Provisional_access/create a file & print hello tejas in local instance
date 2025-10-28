@@ -1,0 +1,87 @@
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+      version = "6.18.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.region
+  access_key = var.access_key
+  secret_key = var.secret_key
+}
+
+resource "aws_instance" "example" {
+  
+  ami           = "ami-07860a2d7eb515d9a"
+  instance_type = "t2.micro"
+  subnet_id     =  var.subnet_id
+  vpc_security_group_ids = [aws_security_group.terraform_sg.id]
+  key_name      = "nverginiakeypair"
+  associate_public_ip_address = true
+  
+
+  tags = {
+    Name = "Remote-exec-tejas-terraform-instance"
+  }
+ 
+}
+  resource "null_resource" "repeat_hello_tejas" {
+  provisioner "local-exec" {
+     interpreter = ["PowerShell", "-Command"]
+       command = "for ($i=1; $i -le 10; $i++) { echo 'Hello Tejas' >> hello.txt }"
+  }
+}
+resource "aws_security_group" "terraform_sg" {
+  name        = "terraform_custom_sg"
+  description = "Allow TLS inbound traffic and all outbound traffic"
+  vpc_id      = var.vpc_id
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  
+  ingress {
+    from_port        = 22
+    to_port          = 22
+    protocol         = "TCP"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+    
+  ingress {
+    from_port        = 80
+    to_port          = 80
+    protocol         = "TCP"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "terraform_created_sg"
+  }
+
+}
+
+
+
+# resource "tls_private_key" "pk" {
+#   algorithm = "RSA"
+#   rsa_bits  = 4096
+# }
+
+# resource "aws_key_pair" "kp" {
+#   key_name   = "tfnverginia"       # Create a "myKey" to AWS!!
+#   public_key = tls_private_key.pk.public_key_openssh
+# }
+
+# resource "local_file" "ssh_key" {
+#   filename = "${aws_key_pair.kp.key_name}.pem"
+#   content = tls_private_key.pk.private_key_pem
+#   file_permission = "0400"
+# }
