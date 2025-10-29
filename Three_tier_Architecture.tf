@@ -202,7 +202,7 @@ resource "aws_instance" "app_ec2" {
 #create db_instancd
 resource "aws_db_instance" "db_rds" {
   allocated_storage    = 10
-  name                 = "three_tire_db"
+  db_name                 = "three_tire_db"
   engine               = "mysql"
   engine_version       = "8.0"
   instance_class       = "db.t3.micro"
